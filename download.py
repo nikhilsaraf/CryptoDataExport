@@ -11,8 +11,8 @@ def inputArgs():
     parser.add_argument('--apiSecret', default=None, help='API secret')
     parser.add_argument("--start", default=None, help='start date (inclusive), example: 2018-10-19')
     parser.add_argument('--end', default=None, help='end date (exclusive), example: 2018-10-20')
+    parser.add_argument('--limit', type=int, default=1000, help='max number of trades to fetch on every API request')
     parser.add_argument('-v', action='store_true', default=False, help='verbose exchange logging')
-    parser.add_argument('-l', action='store_true', default=False, help='log to file')
     args = parser.parse_args()
 
     if not args.exchange or not args.apiKey or not args.apiSecret or not args.start or not args.end:
@@ -31,26 +31,46 @@ def makeExchange(name, apiKey, apiSecret, verbose=False):
         raise Exception("invalid exchange argument", name)
     return exchange
 
+def convertTimebounds(exchange, start, end):
+    startInt = exchange.parse8601(start + 'T00:00:00.000Z')
+    endInt = exchange.parse8601(end + 'T00:00:00.000Z')
+
+    if startInt >= endInt:
+        raise Exception("invalid time bounds, end date needs to be greater than start date")
+    return startInt, endInt
+
 def main():
     symbol="XLM/USD"
     args = inputArgs()
     exchange = makeExchange(args.exchange, args.apiKey, args.apiSecret, args.v)
+    since, endTimestampExclusive = convertTimebounds(exchange, args.start, args.end)
     filename = args.exchange + '_' + args.start + '_' + args.end + '_trades.csv'
 
     if not exchange.has['fetchTrades']:
         raise Exception("function missing")
 
-    since = exchange.parse8601(args.start + 'T00:00:00.000Z')
+    processTrades(exchange, symbol, filename, since, endTimestampExclusive, args.limit)
+    print('done')
+
+def processTrades(exchange, symbol, filename, since, endTimestampExclusive, limit):
     with open(filename, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        # write header
         csv_writer.writerow(['currency_pair', 'ID', 'timestamp', 'side', 'price', 'amount', 'fee', 'fee_currency', 'cost'])
 
-        # TODO paginate and write to file until we hit a date that is outside the range
-        # TODO since param is not working here
-        trades_json = exchange.fetch_my_trades(symbol=symbol, since=since, limit=200, params={})
-        for trade in trades_json:
-            csv_writer.writerow([trade['symbol'], trade['id'], trade['timestamp'], trade['side'], trade['price'], trade['amount'], trade['fee']['cost'], trade['fee']['currency'], trade['cost']])
+        while since < endTimestampExclusive:
+            print('fetching the next', limit, 'trades since', since)
+            # returns the trades in sorted order
+            trades_json = exchange.fetch_my_trades(symbol=symbol, since=since, limit=limit, params={})
+
+            for trade in trades_json:
+                if trade['timestamp'] >= endTimestampExclusive:
+                    break
+
+                # write directly for now instead of introducing batching logic until that is needed
+                csv_writer.writerow([trade['symbol'], trade['id'], trade['timestamp'], trade['side'], trade['price'], trade['amount'], trade['fee']['cost'], trade['fee']['currency'], trade['cost']])
+
+            # add 1 to so we don't repeat trades
+            since = trades_json[-1]['timestamp'] + 1
 
 if __name__ == "__main__":
     main()
