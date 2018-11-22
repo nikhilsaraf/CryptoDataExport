@@ -44,14 +44,13 @@ def main():
     with open(filename, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         # write header
-        csv_writer.writerow(['currency_pair', 'ID', 'timestamp', 'side', 'price', 'amount', 'fee', 'cost'])
+        csv_writer.writerow(['currency_pair', 'ID', 'timestamp', 'side', 'price', 'amount', 'fee', 'fee_currency', 'cost'])
 
         # TODO paginate and write to file until we hit a date that is outside the range
-        # TODO use fetch my trades here
         # TODO since param is not working here
-        trades_json = exchange.fetch_trades(symbol=symbol, since=since, limit=200, params={})
+        trades_json = exchange.fetch_my_trades(symbol=symbol, since=since, limit=200, params={})
         for trade in trades_json:
-            csv_writer.writerow([trade['symbol'], trade['id'], trade['timestamp'], trade['side'], trade['price'], trade['amount'], trade['fee'], trade['cost']])
+            csv_writer.writerow([trade['symbol'], trade['id'], trade['timestamp'], trade['side'], trade['price'], trade['amount'], trade['fee']['cost'], trade['fee']['currency'], trade['cost']])
 
 if __name__ == "__main__":
     main()
