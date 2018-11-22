@@ -8,6 +8,7 @@ def inputArgs():
     parser.add_argument('--exchange', default=None, help='exchange name (kraken, binance, etc.)')
     parser.add_argument('--apiKey', default=None, help='API key')
     parser.add_argument('--apiSecret', default=None, help='API secret')
+    parser.add_argument('--pair', default=None, help='currency pair for which to fetch trades, example: XLM/USD')
     parser.add_argument("--start", default=None, help='start date (inclusive), example: 2018-10-19')
     parser.add_argument('--end', default=None, help='end date (exclusive), example: 2018-10-20')
     parser.add_argument('--pst', action='store_true', default=False, help='use the PST timezone (default UTC)')
@@ -15,7 +16,7 @@ def inputArgs():
     parser.add_argument('-v', action='store_true', default=False, help='verbose exchange logging')
     args = parser.parse_args()
 
-    if not args.exchange or not args.apiKey or not args.apiSecret or not args.start or not args.end:
+    if not args.exchange or not args.apiKey or not args.apiSecret or not args.pair or not args.start or not args.end:
         parser.print_help()
         sys.exit(1)
     return args
@@ -45,7 +46,6 @@ def convertTimebounds(exchange, start, end, usePst):
     return startInt, endInt
 
 def main():
-    symbol="XLM/USD"
     args = inputArgs()
     exchange = makeExchange(args.exchange, args.apiKey, args.apiSecret, args.v)
     since, endTimestampExclusive = convertTimebounds(exchange, args.start, args.end, args.pst)
@@ -62,8 +62,8 @@ def main():
     processBalance(exchange, filenamePrefix + '_balances.csv')
     print('... done')
 
-    print('processing trades ...')
-    processTrades(exchange, symbol, filenamePrefix + '_trades.csv', since, endTimestampExclusive, args.limit)
+    print('processing trades for %s ...' % args.pair)
+    processTrades(exchange, args.pair, filenamePrefix + '_trades.csv', since, endTimestampExclusive, args.limit)
     print('... done')
 
 def processBalance(exchange, filename):
