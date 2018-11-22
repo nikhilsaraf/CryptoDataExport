@@ -1,7 +1,6 @@
 import argparse
 import sys
 import ccxt
-import json
 import csv
 
 def inputArgs():
@@ -54,13 +53,31 @@ def main():
     if args.pst:
         tzStr = 'PST'
     print('using', tzStr, 'timezone')
-    filename = args.exchange + '_' + args.start + '_' + args.end + '_' + tzStr + '_trades.csv'
+    filenamePrefix = args.exchange + '_' + args.start + '_' + args.end + '_' + tzStr
 
     if not exchange.has['fetchTrades']:
         raise Exception("function missing")
 
-    processTrades(exchange, symbol, filename, since, endTimestampExclusive, args.limit)
-    print('done')
+    print('processing balance ...')
+    processBalance(exchange, filenamePrefix + '_balances.csv')
+    print('... done')
+
+    print('processing trades ...')
+    processTrades(exchange, symbol, filenamePrefix + '_trades.csv', since, endTimestampExclusive, args.limit)
+    print('... done')
+
+def processBalance(exchange, filename):
+    with open(filename, mode='w') as csv_file:
+        csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csv_writer.writerow(['currency', 'total', 'free', 'used'])
+
+        balance_json = exchange.fetch_balance()
+        total = balance_json['total']
+        free = balance_json['free']
+        used = balance_json['used']
+
+        for currency in total:
+            csv_writer.writerow([currency, total[currency], free[currency], used[currency]])
 
 def processTrades(exchange, symbol, filename, since, endTimestampExclusive, limit):
     with open(filename, mode='w') as csv_file:
@@ -68,7 +85,7 @@ def processTrades(exchange, symbol, filename, since, endTimestampExclusive, limi
         csv_writer.writerow(['currency_pair', 'ID', 'timestamp', 'side', 'price', 'amount', 'fee', 'fee_currency', 'cost'])
 
         while since < endTimestampExclusive:
-            print('fetching the next', limit, 'trades since', since)
+            print('    fetching the next', limit, 'trades since', since)
             # returns the trades in sorted order
             trades_json = exchange.fetch_my_trades(symbol=symbol, since=since, limit=limit, params={})
             if len(trades_json) == 0:
