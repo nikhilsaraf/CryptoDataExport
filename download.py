@@ -5,14 +5,14 @@ import json
 import csv
 
 def inputArgs():
-    parser = argparse.ArgumentParser(description='Download Crypto Data')
+    parser = argparse.ArgumentParser(description='Export your data from popular cryptocurrency exchanges as CSV files')
     parser.add_argument('--exchange', default=None, help='exchange name (kraken, binance, etc.)')
     parser.add_argument('--apiKey', default=None, help='API key')
     parser.add_argument('--apiSecret', default=None, help='API secret')
     parser.add_argument("--start", default=None, help='start date (inclusive), example: 2018-10-19')
     parser.add_argument('--end', default=None, help='end date (exclusive), example: 2018-10-20')
-    parser.add_argument('--pst', action='store_true', default=False, help='use the PST timezone')
-    parser.add_argument('--limit', type=int, default=1000, help='max number of trades to fetch on every API request')
+    parser.add_argument('--pst', action='store_true', default=False, help='use the PST timezone (default UTC)')
+    parser.add_argument('--limit', type=int, default=1000, help='max trades to fetch every API request (default 1000)')
     parser.add_argument('-v', action='store_true', default=False, help='verbose exchange logging')
     args = parser.parse_args()
 
